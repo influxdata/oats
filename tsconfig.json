@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "lib": ["es2017"],
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "target": "ESNext",
+    "moduleResolution": "node"
+  }
+}
