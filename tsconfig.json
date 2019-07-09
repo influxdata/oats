@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
-    "lib": ["es2017"],
     "module": "CommonJS",
     "esModuleInterop": true,
     "target": "ESNext",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "sourceMap": true
   }
 }
