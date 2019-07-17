@@ -1,3 +1,7 @@
-import { generate } from "./generate";
+import { generate } from "./generate"
 
-generate(process.argv[2]).then(result => console.log(result));
+if (require.main === module) {
+  generate(process.argv[2]).then(result => console.log(result))
+}
+
+export { generate }

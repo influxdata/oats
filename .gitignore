@@ -1,4 +1,4 @@
 node_modules
-api.yml
+fixtures/influxdb.yml
 .vscode
 dist
