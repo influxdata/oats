@@ -1,20 +1,5 @@
 import { PathOperation, Operation } from "./types"
-
-const STATUS_CODE_NAMES = {
-  200: "OK",
-  201: "Created",
-  202: "Accepted",
-  204: "NoContent",
-  400: "BadRequest",
-  401: "Unauthorized",
-  403: "Forbidden",
-  404: "NotFound",
-  413: "PayloadTooLarge",
-  429: "TooManyRequests",
-  500: "InternalServerError",
-  503: "ServiceUnavailable",
-  default: "Default"
-}
+import { STATUSES } from "./statuses"
 
 function titleCase(s: string) {
   return s.length ? `${s[0].toUpperCase()}${s.slice(1).toLowerCase()}` : s
@@ -121,7 +106,7 @@ function printResponseType(
   }
 
   const [mediaType, { type: typeImpl }] = mediaTypes[0]
-  const responseTypeName = `${pathOpName}${STATUS_CODE_NAMES[code]}Response`
+  const responseTypeName = `${pathOpName}${STATUSES}Response`
 
   if (mediaType !== "application/json") {
     return [responseTypeName, "Response"]
