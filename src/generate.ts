@@ -8,6 +8,7 @@ import { PathOperation, Operation, OPERATIONS } from "./types"
 import {
   printPathOperation,
   printPathOperationTypes,
+  printField,
   isTypeNamed
 } from "./print"
 
@@ -239,16 +240,20 @@ class Generator {
     obj: OpenAPIV3.NonArraySchemaObject
   ): string {
     const fields = Object.entries(obj.properties).map(([name, value]) => {
-      const readOnly = (value as any).readOnly ? "readonly " : ""
-      const required = (obj.required || []).includes(name) ? "" : "?"
-      const field = `${readOnly}${name}${required}: ${this.getType(value)}`
+      const readOnly = (value as any).readOnly
+      const required = (obj.required || []).includes(name)
+      const description = (value as any).description
 
-      return "description" in value
-        ? `/*\n  ${value.description}\n*/${field}`
-        : field
+      return printField(
+        readOnly,
+        name,
+        required,
+        this.getType(value),
+        description
+      )
     })
 
-    return `{ ${fields.join("; ")} }`
+    return `{\n  ${fields.join("\n  ")}\n}`
   }
 
   private getTypeFromAllOf(obj: OpenAPIV3.SchemaObject): string {
