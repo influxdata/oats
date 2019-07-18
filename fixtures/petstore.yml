@@ -44,6 +44,13 @@ paths:
       operationId: createPets
       tags:
         - pets
+      requestBody:
+        required: true
+        description: ''
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
       responses:
         '200':
           description: Successful operation
@@ -90,7 +97,7 @@ paths:
                 $ref: "#/components/schemas/Error"
 components:
   schemas:
-    Pet:
+    BasePet:
       required:
         - id
         - name
@@ -114,6 +121,26 @@ components:
           enum:
             - male
             - female
+    Pet:
+      oneOf:
+        - $ref: "#/components/schemas/Charzard"
+        - $ref: "#/components/schemas/Squirtle"
+    Squirtle:
+      allOf:
+        - $ref: "#/components/schemas/BasePet"
+        - type: object
+          required: ["weight"]
+          properties:
+            weight:
+              type: number
+    Charzard:
+      allOf:
+        - $ref: "#/components/schemas/BasePet"
+        - type: object
+          required: ["color"]
+          properties:
+            color:
+              type: string
     Pets:
       type: array
       items:

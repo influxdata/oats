@@ -5,6 +5,10 @@ function titleCase(s: string) {
   return s.length ? `${s[0].toUpperCase()}${s.slice(1).toLowerCase()}` : s
 }
 
+function camelCase(s: string) {
+  return s.length ? `${s[0].toLowerCase()}${s.slice(1)}` : s
+}
+
 function depluralize(s: string) {
   return s.endsWith("s") ? s.slice(0, s.length - 1) : s
 }
@@ -12,12 +16,26 @@ function depluralize(s: string) {
 function printPathOpName(path: string, op: Operation): string {
   const nicePathName = path
     .split("/")
-    .filter(p => !p.startsWith("{"))
     .map(titleCase)
-    .map((p, i, ps) => (i !== ps.length - 1 ? depluralize(p) : p))
+    .map((p, i, ps) => {
+      if (i === ps.length - 2 && ps[i + 1].startsWith("{")) {
+        return depluralize(p)
+      }
+
+      return p
+    })
+    .filter(p => !p.startsWith("{"))
     .join("")
 
-  return `${titleCase(op)}${nicePathName}`
+  const verb = {
+    get: "Get",
+    post: "Create",
+    put: "Replace",
+    patch: "Update",
+    delete: "Delete"
+  }[op]
+
+  return `${verb}${nicePathName}`
 }
 
 export function printField(
@@ -106,7 +124,7 @@ function printResponseType(
   }
 
   const [mediaType, { type: typeImpl }] = mediaTypes[0]
-  const responseTypeName = `${pathOpName}${STATUSES}Response`
+  const responseTypeName = `${pathOpName}${STATUSES[code]}Response`
 
   if (mediaType !== "application/json") {
     return [responseTypeName, "Response"]
@@ -114,7 +132,7 @@ function printResponseType(
 
   const responseType = `
 interface ${responseTypeName} extends Response {
-  status: ${code}
+  status: ${code === "default" ? 500 : code}
   json: () => Promise<${typeImpl}>
 }
 `
@@ -123,15 +141,22 @@ interface ${responseTypeName} extends Response {
 }
 
 export function printPathOperation(pathOperation: PathOperation): string {
+  const typesOutput = printPathOperationTypes(pathOperation)
+
   const pathOpName = printPathOpName(
     pathOperation.path,
     pathOperation.operation
   )
 
-  return `
-export function foo(params: ${pathOpName}Params): ${pathOpName}Response {
+  const functionOutput = `
+export function ${camelCase(
+    pathOpName
+  )}(params: ${pathOpName}Params): ${pathOpName}Response {
+  // TODO
 }
 `.trim()
+
+  return `${typesOutput}\n\n${functionOutput}`
 }
 
 export function isTypeNamed(type: string): boolean {

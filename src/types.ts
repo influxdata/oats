@@ -53,7 +53,7 @@ export type PathOperation = {
     [code: string]: {
       description: string
 
-      mediaTypes: {
+      mediaTypes: null | {
         [mediaType: string]: { type: string }
       }
     }

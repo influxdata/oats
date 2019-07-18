@@ -5,12 +5,7 @@ import { format, resolveConfig } from "prettier"
 import { get } from "lodash"
 
 import { PathOperation, Operation, OPERATIONS } from "./types"
-import {
-  printPathOperation,
-  printPathOperationTypes,
-  printField,
-  isTypeNamed
-} from "./print"
+import { printPathOperation, printField, isTypeNamed } from "./print"
 
 class Generator {
   private doc: OpenAPIV3.Document
@@ -34,15 +29,11 @@ class Generator {
       .map(([name, impl]) => `type ${name} = ${impl}`)
       .join("\n\n")
 
-    const pathTypesOutput = this.pathOperations
-      .map(op => printPathOperationTypes(op))
-      .join("\n\n")
-
     const pathOperationsOutput = this.pathOperations
       .map(op => printPathOperation(op))
       .join("\n\n")
 
-    const output = `${namedTypesOutput}\n\n${pathTypesOutput}\n\n${pathOperationsOutput}`
+    const output = `${namedTypesOutput}\n\n${pathOperationsOutput}`
 
     return output
   }
@@ -125,6 +116,17 @@ class Generator {
         const responseObj: OpenAPIV3.ResponseObject = this.followReference(
           refOrResponse
         )
+
+        if (!responseObj.content) {
+          // If a response code is defined but
+          return {
+            ...acc,
+            [responseCode]: {
+              description: responseObj.description,
+              mediaTypes: null
+            }
+          }
+        }
 
         return {
           ...acc,
