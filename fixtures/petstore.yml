@@ -69,14 +69,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /pets/{petId}:
+  /pets/{petID}:
     get:
       summary: Info for a specific pet
       operationId: showPetById
       tags:
         - pets
       parameters:
-        - name: petId
+        - name: petID
           in: path
           required: true
           description: The id of the pet to retrieve

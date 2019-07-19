@@ -111,41 +111,28 @@ class Generator {
       return null
     }
 
-    return Object.entries(responses).reduce(
-      (acc, [responseCode, refOrResponse]) => {
-        const responseObj: OpenAPIV3.ResponseObject = this.followReference(
-          refOrResponse
+    return Object.entries(responses).map(([responseCode, refOrResponse]) => {
+      const responseObj: OpenAPIV3.ResponseObject = this.followReference(
+        refOrResponse
+      )
+
+      let mediaTypes = []
+
+      if (responseObj.content) {
+        mediaTypes = Object.entries(responseObj.content).map(
+          ([mediaType, mediaTypeObj]) => ({
+            mediaType,
+            type: this.getType(mediaTypeObj.schema)
+          })
         )
+      }
 
-        if (!responseObj.content) {
-          // If a response code is defined but
-          return {
-            ...acc,
-            [responseCode]: {
-              description: responseObj.description,
-              mediaTypes: null
-            }
-          }
-        }
-
-        return {
-          ...acc,
-          [responseCode]: {
-            description: responseObj.description,
-            mediaTypes: Object.entries(responseObj.content).reduce(
-              (acc, [mediaType, mediaTypeObj]) => ({
-                ...acc,
-                [mediaType]: {
-                  type: this.getType(mediaTypeObj.schema)
-                }
-              }),
-              {}
-            )
-          }
-        }
-      },
-      {}
-    )
+      return {
+        code: responseCode,
+        description: responseObj.description,
+        mediaTypes: []
+      }
+    }, [])
   }
 
   private followReference(obj) {

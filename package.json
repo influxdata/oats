@@ -1,5 +1,5 @@
 {
-  "name": "@chnn/openapi-ts-gen",
+  "name": "openapi-ts",
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",

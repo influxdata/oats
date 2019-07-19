@@ -49,13 +49,12 @@ export type PathOperation = {
     type: string
   }
 
-  responses: null | {
-    [code: string]: {
-      description: string
-
-      mediaTypes: null | {
-        [mediaType: string]: { type: string }
-      }
-    }
-  }
+  responses: Array<{
+    code: string
+    description: string
+    mediaTypes: Array<{
+      mediaType: string
+      type: string
+    }>
+  }>
 }

@@ -5,7 +5,11 @@ function titleCase(s: string) {
   return s.length ? `${s[0].toUpperCase()}${s.slice(1).toLowerCase()}` : s
 }
 
-function camelCase(s: string) {
+function uppercase1(s: string) {
+  return s.length ? `${s[0].toUpperCase()}${s.slice(1)}` : s
+}
+
+function lowercase1(s: string) {
   return s.length ? `${s[0].toLowerCase()}${s.slice(1)}` : s
 }
 
@@ -13,12 +17,18 @@ function depluralize(s: string) {
   return s.endsWith("s") ? s.slice(0, s.length - 1) : s
 }
 
-function printPathOpName(path: string, op: Operation): string {
+function printPathOpName({ path, operation }: PathOperation): string {
   const nicePathName = path
     .split("/")
     .map(titleCase)
     .map((p, i, ps) => {
-      if (i === ps.length - 2 && ps[i + 1].startsWith("{")) {
+      const isGettingSingleResource =
+        operation === "get" && i === ps.length - 2 && ps[i + 1].startsWith("{")
+
+      const isAddressingSingleResource =
+        operation !== "get" && i === ps.length - 1
+
+      if (isGettingSingleResource || isAddressingSingleResource) {
         return depluralize(p)
       }
 
@@ -28,14 +38,32 @@ function printPathOpName(path: string, op: Operation): string {
     .join("")
 
   const verb = {
-    get: "Get",
-    post: "Create",
-    put: "Replace",
-    patch: "Update",
-    delete: "Delete"
-  }[op]
+    get: "get",
+    post: "create",
+    put: "replace",
+    patch: "update",
+    delete: "delete"
+  }[operation]
 
   return `${verb}${nicePathName}`
+}
+
+function printParamsName(pathOp: PathOperation): string {
+  const pathOpName = printPathOpName(pathOp)
+
+  return `${uppercase1(pathOpName)}Params`
+}
+
+function printResultName(pathOp: PathOperation): string {
+  const pathOpName = printPathOpName(pathOp)
+
+  return `${uppercase1(pathOpName)}Result`
+}
+
+function printResultVariantName(pathOp: PathOperation, code: string): string {
+  const pathOpName = printPathOpName(pathOp)
+
+  return `${uppercase1(pathOpName)}${STATUSES[code]}Result`
 }
 
 export function printField(
@@ -50,24 +78,19 @@ export function printField(
 
 export function printPathOperationTypes(pathOperation: PathOperation): string {
   const paramsType = printParamsType(pathOperation)
-  const responseTypes = printResponseTypes(pathOperation)
+  const responseTypes = printResultTypes(pathOperation)
 
   return `${paramsType}\n\n${responseTypes}`
 }
 
-function printParamsType(pathOperation: PathOperation): string {
-  const pathOpName = printPathOpName(
-    pathOperation.path,
-    pathOperation.operation
-  )
-
-  const bodyField = pathOperation.bodyParam
+function printParamsType(pathOp: PathOperation): string {
+  const dataField = pathOp.bodyParam
     ? printField(
         false,
-        "body",
-        pathOperation.bodyParam.required,
-        pathOperation.bodyParam.type,
-        pathOperation.bodyParam.description
+        "data",
+        pathOp.bodyParam.required,
+        pathOp.bodyParam.type,
+        pathOp.bodyParam.description
       )
     : ""
 
@@ -78,10 +101,10 @@ function printParamsType(pathOperation: PathOperation): string {
   const headerField = ""
 
   const paramsType = `
-interface ${pathOpName}Params {
+interface ${printParamsName(pathOp)} {
   ${pathFields}
 
-  ${bodyField}
+  ${dataField}
 
   ${queryField}
 
@@ -92,18 +115,13 @@ interface ${pathOpName}Params {
   return paramsType
 }
 
-function printResponseTypes(pathOperation: PathOperation): string {
-  const pathOpName = printPathOpName(
-    pathOperation.path,
-    pathOperation.operation
-  )
-
-  const variants = Object.entries(pathOperation.responses).map(([code, resp]) =>
-    printResponseType(code, resp, pathOpName)
+function printResultTypes(pathOp: PathOperation): string {
+  const variants = pathOp.responses.map(({ code, mediaTypes }) =>
+    printResultType(code, mediaTypes, printResultVariantName(pathOp, code))
   )
 
   const responseTypes = `
-type ${pathOpName}Response =
+type ${printResultName(pathOp)} =
   | ${variants.map(([name]) => name).join("\n  | ")}
 
 ${variants.map(([_, type]) => type).join("\n\n")}
@@ -112,47 +130,87 @@ ${variants.map(([_, type]) => type).join("\n\n")}
   return responseTypes
 }
 
-function printResponseType(
+function printResultType(
   code: string,
-  response: PathOperation["responses"]["code"],
-  pathOpName: string
+  mediaTypes: PathOperation["responses"][0]["mediaTypes"],
+  name: string
 ): [string, string] {
-  const mediaTypes = Object.entries(response.mediaTypes)
+  const mediaTypeObj: any =
+    mediaTypes.find(d => d.mediaType === "application/json") || mediaTypes[0]
 
-  if (mediaTypes.length > 1) {
-    throw new Error("multiple response media types not supported")
+  let resolvedTypeImpl: string
+
+  if (mediaTypeObj && mediaTypeObj.mediaType === "application/json") {
+    resolvedTypeImpl = mediaTypeObj.type
+  } else if (mediaTypeObj && mediaTypeObj.startsWith("text")) {
+    resolvedTypeImpl = "string"
+  } else {
+    resolvedTypeImpl = "any"
   }
 
-  const [mediaType, { type: typeImpl }] = mediaTypes[0]
-  const responseTypeName = `${pathOpName}${STATUSES[code]}Response`
+  const resultType = `
+interface ${name} {
+  status: ${code === "default" ? 500 : code};
+  headers: Headers;
+  data: ${resolvedTypeImpl};
+}
+`.trim()
 
-  if (mediaType !== "application/json") {
-    return [responseTypeName, "Response"]
+  return [name, resultType]
+}
+
+export function printPathOperation(pathOp: PathOperation): string {
+  const typesOutput = printPathOperationTypes(pathOp)
+
+  const query = pathOp.queryParams.length
+    ? "const query = params.query ? `?${new URLSearchParams(params.query as any).toString()}` : ''"
+    : ""
+
+  // TODO: server URL
+  let url = pathOp.path.replace(/{/g, "${")
+
+  let resultData = "data"
+
+  let body
+  let isJSON
+
+  if (pathOp.bodyParam && pathOp.bodyParam.type === "any") {
+    body = "body: params.data,"
+    isJSON = false
+  } else if (pathOp.bodyParam) {
+    body = "body: JSON.stringify(params.data),"
+    isJSON = true
+  } else {
+    body = ""
+    isJSON = false
   }
 
-  const responseType = `
-interface ${responseTypeName} extends Response {
-  status: ${code === "default" ? 500 : code}
-  json: () => Promise<${typeImpl}>
-}
-`
-
-  return [responseTypeName, responseType]
-}
-
-export function printPathOperation(pathOperation: PathOperation): string {
-  const typesOutput = printPathOperationTypes(pathOperation)
-
-  const pathOpName = printPathOpName(
-    pathOperation.path,
-    pathOperation.operation
-  )
+  let contentTypeHeader = isJSON ? '"Content-Type": "application/json",' : ""
 
   const functionOutput = `
-export function ${camelCase(
-    pathOpName
-  )}(params: ${pathOpName}Params): ${pathOpName}Response {
-  // TODO
+export async function ${printPathOpName(pathOp)}(params: ${printParamsName(
+    pathOp
+  )}, options): Promise<${printResultName(pathOp)}> {
+  ${query}
+
+  const response = await fetch(\`${url}${query ? "${query}" : ""}\`, {
+    ${body}
+    method: "${pathOp.operation}",
+    credentials: "same-origin",
+    signal: options.signal,
+    headers: {
+      ${contentTypeHeader}
+      ${pathOp.headerParams.length ? "...headers," : ""}
+    },
+  })
+
+  const result = {
+    status: response.status,
+    headers: response.headers,
+    ${resultData}
+  }
+
+  return result as ${printResultName(pathOp)}
 }
 `.trim()
 
@@ -166,3 +224,82 @@ export function isTypeNamed(type: string): boolean {
   // named type
   return (code > 64 && code < 91) || (code > 96 && code < 123)
 }
+
+/*
+  interface Foo {}
+  
+  interface AdditionalParams {
+    signal?: AbortSignal
+  }
+  
+  interface FooParams {
+    barID: string
+  
+    headers?: {
+      zapTrace?: string
+    }
+  
+    query?: {
+      limit?: number
+    }
+  
+    data: Foo
+  }
+  
+  type FooResult = FooOKResult | FooInternalServerErrorResult
+  
+  interface FooOKResult {
+    ok: true
+    status: 200
+    statusText: "OK"
+    headers: Headers
+    data: {}
+  }
+  
+  interface FooInternalServerErrorResult {
+    ok: false
+    status: 500
+    statusText: "Internal Server Error"
+    headers: Headers
+    data: any
+  }
+  
+  export async function getFoo(
+    params: FooParams,
+    additional: AdditionalParams
+  ): Promise<FooResult> {
+    const query = params.query // only include if query in params
+      ? `?${new URLSearchParams(params.query as any).toString()}`
+      : ""
+  
+    const response = await fetch(`/bars/${params.barID}/foo${query}`, {
+      method: "POST",
+      body: JSON.stringify(params.data), // just pass data directly if not application/json requestBody
+      credentials: "same-origin",
+      signal: additional.signal,
+      headers: {
+        Accept: "application/json", // comma seperated list of every possible response type, json first
+        "Content-Type": "application/json", // only support json or single other string content type
+        ...params.headers
+      }
+    })
+  
+    let data: any = null
+  
+    if (response.headers.get("Content-Type") === "application/json") {
+      data = await response.json() // default to this if only json request type
+    } else {
+      data = await response.text()
+    }
+  
+    const result = {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      data
+    }
+  
+    return result as FooResult
+  }
+*/
