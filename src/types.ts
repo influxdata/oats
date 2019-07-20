@@ -12,6 +12,9 @@ export const OPERATIONS: Operation[] = ["get", "post", "put", "patch", "delete"]
 // OpenAPI doc. It represents all the information needed to print out an
 // implementation of a function that makes an HTTP request to that endpoint.
 export type PathOperation = {
+  // e.g. /api/v1
+  server: string
+
   // e.g. "/scrapers/{id}/members"
   path: string
 
@@ -46,6 +49,7 @@ export type PathOperation = {
   bodyParam: null | {
     description: string
     required: boolean
+    mediaType: string
     type: string
   }
 

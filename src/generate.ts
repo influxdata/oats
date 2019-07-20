@@ -5,11 +5,18 @@ import { format, resolveConfig } from "prettier"
 import { get } from "lodash"
 
 import { PathOperation, Operation, OPERATIONS } from "./types"
-import { printPathOperation, printField, isTypeNamed } from "./print"
+
+import {
+  formatPathOp,
+  formatLib,
+  formatTypeDeclaration,
+  formatTypeField,
+  isTypeNamed
+} from "./format"
 
 class Generator {
   private doc: OpenAPIV3.Document
-  private pathOperations: PathOperation[] = []
+  private pathOps: PathOperation[] = []
   private namedTypes: { [name: string]: string } = {}
 
   constructor(doc: OpenAPIV3.Document) {
@@ -26,14 +33,14 @@ class Generator {
 
   public print() {
     const namedTypesOutput = Object.entries(this.namedTypes)
-      .map(([name, impl]) => `type ${name} = ${impl}`)
+      .map(([name, impl]) => formatTypeDeclaration(name, impl))
       .join("\n\n")
 
-    const pathOperationsOutput = this.pathOperations
-      .map(op => printPathOperation(op))
-      .join("\n\n")
+    const pathOpsOutput = this.pathOps.map(op => formatPathOp(op)).join("\n\n")
 
-    const output = `${namedTypesOutput}\n\n${pathOperationsOutput}`
+    const lib = formatLib()
+
+    const output = `${namedTypesOutput}\n\n${lib}\n\n${pathOpsOutput}`
 
     return output
   }
@@ -47,7 +54,8 @@ class Generator {
       operationObj.parameters || []
     ).map(p => this.followReference(p))
 
-    const pathOperation: PathOperation = {
+    const pathOp: PathOperation = {
+      server: this.doc.servers[0].url,
       path,
       operation,
       summary: operationObj.summary,
@@ -58,7 +66,7 @@ class Generator {
       responses: this.collectResponses(operationObj.responses)
     }
 
-    this.pathOperations.push(pathOperation)
+    this.pathOps.push(pathOp)
   }
 
   private collectParameters(
@@ -86,22 +94,37 @@ class Generator {
       operationObj.requestBody
     )
 
-    const jsonContent = get(requestBody, ["content", "application/json"])
+    const mediaTypeEntries = Object.entries(requestBody.content)
     const { description, required = false } = requestBody
 
-    if (!jsonContent) {
+    const jsonEntry = mediaTypeEntries.find(([mediaType]) =>
+      mediaType.includes("application/json")
+    )
+
+    if (jsonEntry) {
       return {
         description,
         required,
-        type: "any"
+        mediaType: jsonEntry[0],
+        type: this.getType(jsonEntry[1].schema)
       }
     }
 
-    return {
-      description,
-      required,
-      type: this.getType(jsonContent.schema)
+    const textEntry = mediaTypeEntries.find(([mediaType]) =>
+      mediaType.includes("text")
+    )
+
+    if (textEntry) {
+      return { description, required, mediaType: textEntry[0], type: "string" }
     }
+
+    const fallbackEntry = mediaTypeEntries[0]
+
+    if (fallbackEntry) {
+      return { description, required, mediaType: textEntry[0], type: "any" }
+    }
+
+    return null
   }
 
   private collectResponses(
@@ -130,7 +153,7 @@ class Generator {
       return {
         code: responseCode,
         description: responseObj.description,
-        mediaTypes: []
+        mediaTypes
       }
     }, [])
   }
@@ -167,10 +190,19 @@ class Generator {
   ): string {
     if ("$ref" in obj) {
       const typeName = this.getRefName(obj.$ref)
+      const existingImpl = this.namedTypes[typeName]
+
+      // Guard against self-referential types
+      if (existingImpl) {
+        return existingImpl
+      } else {
+        this.namedTypes[typeName] = typeName
+      }
+
       const schema = this.followReference(obj)
       const typeImpl = this.getTypeFromSchemaObj(schema)
 
-      this.registerType(typeName, typeImpl)
+      this.namedTypes[typeName] = typeImpl
 
       return typeName
     }
@@ -233,7 +265,7 @@ class Generator {
       const required = (obj.required || []).includes(name)
       const description = (value as any).description
 
-      return printField(
+      return formatTypeField(
         readOnly,
         name,
         required,
@@ -275,8 +307,6 @@ class Generator {
         `cannot register conflicting implementations for type "${name}"`
       )
     }
-
-    this.namedTypes[name] = impl
   }
 }
 
