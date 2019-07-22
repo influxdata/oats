@@ -105,7 +105,7 @@ async function request({
 
   let body
 
-  if (params.data && contentType.includes("json")) {
+  if (params.data && contentType && contentType.includes("json")) {
     body = JSON.stringify(params.data)
   } else if (params.data) {
     body = params.data
@@ -122,7 +122,7 @@ async function request({
   })
 
   const { status, headers } = resp
-  const respContentType = headers.get("Content-Type")
+  const respContentType = headers.get("Content-Type") || ''
 
   let data
 
