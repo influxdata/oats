@@ -263,15 +263,8 @@ class Generator {
     const fields = Object.entries(obj.properties).map(([name, value]) => {
       const readOnly = (value as any).readOnly
       const required = (obj.required || []).includes(name)
-      const description = (value as any).description
 
-      return formatTypeField(
-        readOnly,
-        name,
-        required,
-        this.getType(value),
-        description
-      )
+      return formatTypeField(readOnly, name, required, this.getType(value))
     })
 
     return `{\n  ${fields.join("\n  ")}\n}`
@@ -299,14 +292,6 @@ class Generator {
         return type
       })
       .join(" | ")
-  }
-
-  private registerType(name: string, impl: string): void {
-    if (this.namedTypes[name] && this.namedTypes[name] !== impl) {
-      throw new Error(
-        `cannot register conflicting implementations for type "${name}"`
-      )
-    }
   }
 }
 

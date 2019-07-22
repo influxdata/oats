@@ -1,14 +1,13 @@
 import { camelize } from "humps"
 
-import { PathOperation, Operation } from "./types"
+import { PathOperation } from "./types"
 import { STATUSES } from "./statuses"
 
 export function formatTypeField(
   readOnly: boolean,
   name: string,
   required: boolean,
-  type: string,
-  description?: string
+  type: string
 ) {
   return `${readOnly ? "readonly " : ""}${name}${required ? "" : "?"}: ${type};`
 }
@@ -50,35 +49,21 @@ export function formatTypeDeclaration(name: string, impl: string): string {
 }
 
 export function formatPathOp(pathOp: PathOperation): string {
-  const typesOutput = formatPathOpTypes(pathOp)
-
-  const queryVar = formatQueryVar(pathOp)
-  const url = formatURL(pathOp)
-  const urlWithQuery = queryVar ? `${url}\${query}` : url
-
-  const dataVar = formatDataVar(pathOp)
-
   // prettier-ignore
   const functionOutput = `
 export async function ${formatName(pathOp)}(
   params: ${paramsName(pathOp)},
   options: RequestOptions = {}
 ): Promise<${resultName(pathOp)}> {
-  ${queryVar}
-
-  const response = await fetch(\`${urlWithQuery}\`, {
-    ${formatBodyField(pathOp)}
+  const response = await request({
     method: "${pathOp.operation.toUpperCase()}",
-    credentials: "same-origin",
-    signal: options.signal,
-    ${formatHeadersField(pathOp)}
+    url: "${formatURL(pathOp)}",
+    params,
+    options,
+    ${formatContentTypeFields(pathOp)}
   })
 
-  const {status, headers} = response
-
-  ${dataVar}
-
-  return {status, headers, ${dataVar ? 'data' : ''}} as ${resultName(pathOp)}
+  return response as ${resultName(pathOp)}
 }
 `.trim()
 
@@ -90,6 +75,69 @@ export function formatLib(): string {
 interface RequestOptions {
   signal?: AbortSignal;
 }
+
+interface RequestParams {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD"
+  url: string
+  params: { [k: string]: any }
+  options: { signal?: AbortSignal }
+  contentType?: string
+  accept?: string
+}
+
+async function request({
+  method,
+  url,
+  params,
+  options,
+  contentType,
+  accept
+}: RequestParams) {
+  const requestHeaders = params.headers
+
+  if (contentType) {
+    requestHeaders["Content-Type"] = contentType
+  }
+
+  if (accept) {
+    requestHeaders["Accept"] = accept
+  }
+
+  let body
+
+  if (params.data && contentType.includes("json")) {
+    body = JSON.stringify(params.data)
+  } else if (params.data) {
+    body = params.data
+  }
+
+  const query = params.query ? \`?\${new URLSearchParams(params.query)}\` : ""
+
+  const resp = await fetch(\`\${url}\${query}\`, {
+    method,
+    body,
+    credentials: "same-origin",
+    signal: options.signal,
+    headers: requestHeaders
+  })
+
+  const { status, headers } = resp
+  const respContentType = headers.get("Content-Type")
+
+  let data
+
+  if (respContentType.includes("json")) {
+    data = await resp.json()
+  } else if (respContentType.includes("octet-stream")) {
+    data = await resp.blob()
+  } else if (respContentType.includes("text")) {
+    data = await resp.text()
+  }
+
+  return { status, headers, data }
+}
+
+
 `.trim()
 }
 
@@ -120,15 +168,7 @@ function formatName({ path, operation }: PathOperation): string {
     .filter(p => !p.startsWith("{"))
     .join("-")
 
-  const verb = {
-    get: "get",
-    post: "create",
-    put: "replace",
-    patch: "update",
-    delete: "delete"
-  }[operation]
-
-  return camelize(`${verb}-${nicePathName}`)
+  return camelize(`${operation}-${nicePathName}`)
 }
 
 function paramsName(pathOp: PathOperation): string {
@@ -156,6 +196,14 @@ function formatPathOpTypes(pathOperation: PathOperation): string {
   return `${paramsType}\n\n${responseTypes}`
 }
 
+function formatContentTypeFields({ bodyParam }: PathOperation) {
+  const contentTypeField = bodyParam
+    ? `contentType: "${bodyParam.mediaType}",`
+    : ""
+
+  return contentTypeField
+}
+
 function formatQueryParams({ queryParams }: PathOperation): string {
   if (!queryParams.length) {
     return ""
@@ -165,7 +213,7 @@ function formatQueryParams({ queryParams }: PathOperation): string {
 
   const typeImpl = `{
   ${queryParams
-    .map(d => formatTypeField(false, d.name, d.required, d.type, d.description))
+    .map(d => formatTypeField(false, d.name, d.required, d.type))
     .join("\n")}
 }`
 
@@ -191,9 +239,7 @@ function formatHeadersParams({ headerParams }: PathOperation): string {
 
   const typeImpl = `{
   ${headerParams
-    .map(d =>
-      formatTypeField(false, `"${d.name}"`, d.required, d.type, d.description)
-    )
+    .map(d => formatTypeField(false, `"${d.name}"`, d.required, d.type))
     .join("\n")}
 }`
 
@@ -206,8 +252,7 @@ function printParamsType(pathOp: PathOperation): string {
         false,
         "data",
         pathOp.bodyParam.required,
-        pathOp.bodyParam.type,
-        pathOp.bodyParam.description
+        pathOp.bodyParam.type
       )
     : ""
 
@@ -275,92 +320,4 @@ interface ${name} {
 
 function formatURL({ path, server }: PathOperation) {
   return server + path.replace(/{/g, "${params.")
-}
-
-function formatQueryVar({ queryParams }: PathOperation) {
-  return queryParams.length
-    ? "const query = params.query ? `?${new URLSearchParams(params.query as any)}` : ''"
-    : ""
-}
-
-function formatBodyField({ bodyParam }: PathOperation) {
-  let body
-
-  if (bodyParam && bodyParam.mediaType.includes("application/json")) {
-    body = "body: JSON.stringify(params.data),"
-  } else if (bodyParam) {
-    body = "body: params.data,"
-  } else {
-    body = ""
-  }
-
-  return body
-}
-
-function formatContentTypeHeader({ bodyParam }: PathOperation) {
-  if (!bodyParam) {
-    return ""
-  }
-
-  return `'Content-Type': "${bodyParam.mediaType}",`
-}
-
-function formatHeadersField(pathOp: PathOperation) {
-  const contentTypeHeader = formatContentTypeHeader(pathOp)
-  const { headerParams } = pathOp
-
-  if (!contentTypeHeader && !headerParams.length) {
-    return ""
-  }
-
-  return `headers: { ${contentTypeHeader} ${
-    headerParams.length ? "...params.headers," : ""
-  } },`
-}
-
-function flatMap(xs, f) {
-  const xss = xs.map(f)
-
-  return [].concat(...xss)
-}
-
-function formatDataVar(pathOp: PathOperation): string {
-  const emptyResponse =
-    flatMap(pathOp.responses, r => r.mediaTypes).length === 0
-
-  if (emptyResponse) {
-    return ``
-  }
-
-  const mediaTypes = flatMap(pathOp.responses, r =>
-    r.mediaTypes.map(d => d.mediaType)
-  )
-
-  const alwaysRespondsJSON = mediaTypes.every(d =>
-    d.includes("application/json")
-  )
-
-  const neverRespondsJSON = mediaTypes.every(
-    d => !d.includes("application/json")
-  )
-
-  if (alwaysRespondsJSON) {
-    return `const data = await response.json()`
-  }
-
-  if (neverRespondsJSON) {
-    return `const data = await response.text()`
-  }
-
-  return `
-  const contentType = response.headers.get('Content-Type')
-
-  let data: any
-
-  if (contentType.includes('application/json')) {
-    data = await response.json()
-  } else {
-    data = await response.text()
-  }
-`.trim()
 }

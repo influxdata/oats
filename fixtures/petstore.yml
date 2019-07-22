@@ -123,9 +123,9 @@ components:
             - female
     Pet:
       oneOf:
-        - $ref: "#/components/schemas/Charzard"
-        - $ref: "#/components/schemas/Squirtle"
-    Squirtle:
+        - $ref: "#/components/schemas/Dog"
+        - $ref: "#/components/schemas/Cat"
+    Dog:
       allOf:
         - $ref: "#/components/schemas/BasePet"
         - type: object
@@ -133,14 +133,14 @@ components:
           properties:
             weight:
               type: number
-    Charzard:
+    Cat:
       allOf:
         - $ref: "#/components/schemas/BasePet"
         - type: object
-          required: ["color"]
+          required: ["fluffy"]
           properties:
-            color:
-              type: string
+            fluffy:
+              type: boolean
     Pets:
       type: array
       items:
