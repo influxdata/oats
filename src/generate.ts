@@ -15,9 +15,10 @@ import {
 } from "./format"
 
 class Generator {
+  public pathOps: PathOperation[] = []
+  public namedTypes: { [name: string]: string } = {}
+
   private doc: OpenAPIV3.Document
-  private pathOps: PathOperation[] = []
-  private namedTypes: { [name: string]: string } = {}
 
   constructor(doc: OpenAPIV3.Document) {
     this.doc = doc
@@ -29,20 +30,6 @@ class Generator {
         }
       }
     }
-  }
-
-  public print() {
-    const namedTypesOutput = Object.entries(this.namedTypes)
-      .map(([name, impl]) => formatTypeDeclaration(name, impl))
-      .join("\n\n")
-
-    const pathOpsOutput = this.pathOps.map(op => formatPathOp(op)).join("\n\n")
-
-    const lib = formatLib()
-
-    const output = `${namedTypesOutput}\n\n${lib}\n\n${pathOpsOutput}`
-
-    return output
   }
 
   private registerPathOperation(
@@ -296,13 +283,25 @@ class Generator {
 }
 
 export async function generate(
-  docOrPathToDoc: string | OpenAPIV3.Document
+  docOrPathToDoc: string | OpenAPIV3.Document,
+  { typesOnly = false } = {}
 ): Promise<string> {
   const doc = (await bundle(docOrPathToDoc)) as OpenAPIV3.Document
 
+  const generator = new Generator(doc)
+
+  let messyOutput = Object.entries(generator.namedTypes)
+    .map(([name, impl]) => formatTypeDeclaration(name, impl))
+    .join("\n\n")
+
+  if (!typesOnly) {
+    messyOutput += formatLib()
+    messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
+  }
+
   const prettierConfig = await resolveConfig(path.resolve(__dirname, "../.."))
 
-  const output = format(new Generator(doc).print(), {
+  const output = format(messyOutput, {
     ...prettierConfig,
     parser: "typescript"
   })

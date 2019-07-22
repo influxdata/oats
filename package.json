@@ -1,20 +1,26 @@
 {
-  "name": "openapi-ts",
+  "name": "@chnn/oats",
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
+  "bin": { 
+    "oats": "bin/oats"
+  },
   "scripts": {
     "test": "jest",
-    "build": "tsc"
+    "build": "rm -rf dist && tsc",
+    "prepublishOnly": "yarn build"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "commander": "^2.20.0",
     "humps": "^2.0.1",
     "lodash": "^4.17.14",
     "swagger-parser": "^8.0.0"
   },
   "devDependencies": {
+    "@types/commander": "^2.12.2",
     "@types/jest": "^24.0.15",
     "@types/node": "^11.11.0",
     "@types/swagger-parser": "^4.0.3",

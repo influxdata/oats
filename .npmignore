@@ -1,0 +1,6 @@
+src
+test
+fixtures
+.vscode
+jest.config.js
+tsconfig.json

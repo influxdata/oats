@@ -1,0 +1,15 @@
+#!/usr/bin/env node
+
+const program = require("commander")
+const { generate } = require("../dist/generate")
+
+program
+  .option("--types-only", "only output type definitions", false)
+  .arguments("<spec>")
+  .action(async (spec, { typesOnly }) => {
+    const output = await generate(spec, { typesOnly })
+
+    console.log(output)
+  })
+
+program.parse(process.argv)
