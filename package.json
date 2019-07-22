@@ -1,9 +1,9 @@
 {
   "name": "@chnn/oats",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
-  "bin": { 
+  "bin": {
     "oats": "bin/oats"
   },
   "scripts": {
