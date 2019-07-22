@@ -181,7 +181,7 @@ class Generator {
 
       // Guard against self-referential types
       if (existingImpl) {
-        return existingImpl
+        return typeName
       } else {
         this.namedTypes[typeName] = typeName
       }
@@ -295,7 +295,9 @@ export async function generate(
     .join("\n\n")
 
   if (!typesOnly) {
+    messyOutput += "\n\n"
     messyOutput += formatLib()
+    messyOutput += "\n\n"
     messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
   }
 
