@@ -296,9 +296,9 @@ export async function generate(
 
   if (!typesOnly) {
     messyOutput += "\n\n"
-    messyOutput += formatLib()
-    messyOutput += "\n\n"
     messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
+    messyOutput += "\n\n"
+    messyOutput += formatLib()
   }
 
   const prettierConfig = await resolveConfig(path.resolve(__dirname, "../.."))

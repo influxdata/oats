@@ -26,7 +26,7 @@ export function isTypeNamed(type: string): boolean {
 
 export function formatTypeDeclaration(name: string, impl: string): string {
   if (!impl.startsWith("{")) {
-    return `type ${name} = ${impl}`
+    return `export type ${name} = ${impl}`
   }
 
   let bracesCount = 0
@@ -41,33 +41,41 @@ export function formatTypeDeclaration(name: string, impl: string): string {
     }
 
     if ((c === "|" || c === "&") && bracesCount === 0) {
-      return `type ${name} = ${impl}`
+      return `export type ${name} = ${impl}`
     }
   }
 
-  return `interface ${name} ${impl}`
+  return `export interface ${name} ${impl}`
 }
 
 export function formatPathOp(pathOp: PathOperation): string {
-  // prettier-ignore
   const functionOutput = `
-export async function ${formatName(pathOp)}(
+export function ${formatName(pathOp)}(
   params: ${paramsName(pathOp)},
   options: RequestOptions = {}
 ): Promise<${resultName(pathOp)}> {
-  const response = await request({
-    method: "${pathOp.operation.toUpperCase()}",
-    url: "${formatURL(pathOp)}",
-    params,
+  return request(
+    "${pathOp.operation.toUpperCase()}",
+    ${formatURL(pathOp)},
+    ${formatParamsArg(pathOp)},
     options,
-    ${formatContentTypeFields(pathOp)}
-  })
-
-  return response as ${resultName(pathOp)}
+  ) as Promise<${resultName(pathOp)}>
 }
 `.trim()
 
   return `${formatPathOpTypes(pathOp)}\n\n${functionOutput}`
+}
+
+function formatParamsArg({ bodyParam, headerParams }: PathOperation): string {
+  if (!bodyParam) {
+    return "params"
+  }
+
+  if (!headerParams.length) {
+    return `{...params, headers: {'Content-Type': '${bodyParam.mediaType}'}}`
+  }
+
+  return `{...params, headers: {...params.headers, 'Content-Type': '${bodyParam.mediaType}'}}`
 }
 
 export function formatLib(): string {
@@ -76,44 +84,23 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-interface RequestParams {
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD"
-  url: string
-  params: { [k: string]: any }
-  options: { signal?: AbortSignal }
-  contentType?: string
-  accept?: string
-}
+async function request(
+  method: string,
+  url: string,
+  params: any = {},
+  options: RequestOptions = {}
+): Promise<any> {
+  const requestHeaders = new Headers(params.headers)
+  const contentType = requestHeaders.get("Content-Type") || ""
 
-async function request({
-  method,
-  url,
-  params,
-  options,
-  contentType,
-  accept
-}: RequestParams) {
-  const requestHeaders = params.headers
+  const body =
+    params.data && contentType.includes("json")
+      ? JSON.stringify(params.data)
+      : params.data
 
-  if (contentType) {
-    requestHeaders["Content-Type"] = contentType
-  }
+  const query = params.query ? \`\${new URLSearchParams(params.query)}\` : ""
 
-  if (accept) {
-    requestHeaders["Accept"] = accept
-  }
-
-  let body
-
-  if (params.data && contentType && contentType.includes("json")) {
-    body = JSON.stringify(params.data)
-  } else if (params.data) {
-    body = params.data
-  }
-
-  const query = params.query ? \`?\${new URLSearchParams(params.query)}\` : ""
-
-  const resp = await fetch(\`\${url}\${query}\`, {
+  const response = await fetch(\`\${url}\${query}\`, {
     method,
     body,
     credentials: "same-origin",
@@ -121,17 +108,17 @@ async function request({
     headers: requestHeaders
   })
 
-  const { status, headers } = resp
-  const respContentType = headers.get("Content-Type") || ''
+  const { status, headers } = response
+  const responseContentType = headers.get("Content-Type")
 
   let data
 
-  if (respContentType.includes("json")) {
-    data = await resp.json()
-  } else if (respContentType.includes("octet-stream")) {
-    data = await resp.blob()
-  } else if (respContentType.includes("text")) {
-    data = await resp.text()
+  if (responseContentType.includes("json")) {
+    data = await response.json()
+  } else if (responseContentType.includes("octet-stream")) {
+    data = await response.blob()
+  } else if (responseContentType.includes("text")) {
+    data = await response.text()
   }
 
   return { status, headers, data }
@@ -194,14 +181,6 @@ function formatPathOpTypes(pathOperation: PathOperation): string {
   const responseTypes = printResultTypes(pathOperation)
 
   return `${paramsType}\n\n${responseTypes}`
-}
-
-function formatContentTypeFields({ bodyParam }: PathOperation) {
-  const contentTypeField = bodyParam
-    ? `contentType: "${bodyParam.mediaType}",`
-    : ""
-
-  return contentTypeField
 }
 
 function formatQueryParams({ queryParams }: PathOperation): string {
@@ -319,5 +298,7 @@ interface ${name} {
 }
 
 function formatURL({ path, server }: PathOperation) {
-  return server + path.replace(/{/g, "${params.")
+  const url = server + path.replace(/{/g, "${params.")
+
+  return url.includes("$") ? "`" + url + "`" : `"${url}"`
 }
