@@ -1,0 +1,167 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`petstore 1`] = `
+"export type Pets = Pet[];
+
+export type Pet = Dog | Cat;
+
+export type Dog = BasePet & {
+  weight: number;
+};
+
+export interface BasePet {
+  id: number;
+  name: string;
+  category?: number;
+  tag?: string;
+  sex?: \\"male\\" | \\"female\\";
+}
+
+export type Cat = BasePet & {
+  fluffy: boolean;
+};
+
+export interface Error {
+  code: number;
+  message: string;
+}
+
+export interface GetPetsParams {
+  query?: {
+    limit?: number;
+  };
+}
+
+type GetPetsResult = GetPetsOKResult | GetPetsDefaultResult;
+
+interface GetPetsOKResult {
+  status: 200;
+  headers: Headers;
+  data: Pets;
+}
+
+interface GetPetsDefaultResult {
+  status: 500;
+  headers: Headers;
+  data: Error;
+}
+
+export function getPets(
+  params: GetPetsParams,
+  options: RequestOptions = {}
+): Promise<GetPetsResult> {
+  return request(
+    \\"GET\\",
+    \\"http://petstore.swagger.io/v1/pets\\",
+    params,
+    options
+  ) as Promise<GetPetsResult>;
+}
+
+export interface PostPetParams {
+  data: Pet;
+}
+
+type PostPetResult = PostPetOKResult | PostPetDefaultResult;
+
+interface PostPetOKResult {
+  status: 200;
+  headers: Headers;
+  data: {
+    pet: Pet;
+  };
+}
+
+interface PostPetDefaultResult {
+  status: 500;
+  headers: Headers;
+  data: Error;
+}
+
+export function postPet(
+  params: PostPetParams,
+  options: RequestOptions = {}
+): Promise<PostPetResult> {
+  return request(
+    \\"POST\\",
+    \\"http://petstore.swagger.io/v1/pets\\",
+    { ...params, headers: { \\"Content-Type\\": \\"application/json\\" } },
+    options
+  ) as Promise<PostPetResult>;
+}
+
+export interface GetPetParams {
+  petID: string;
+}
+
+type GetPetResult = GetPetOKResult | GetPetDefaultResult;
+
+interface GetPetOKResult {
+  status: 200;
+  headers: Headers;
+  data: Pets;
+}
+
+interface GetPetDefaultResult {
+  status: 500;
+  headers: Headers;
+  data: Error;
+}
+
+export function getPet(
+  params: GetPetParams,
+  options: RequestOptions = {}
+): Promise<GetPetResult> {
+  return request(
+    \\"GET\\",
+    \`http://petstore.swagger.io/v1/pets/\${params.petID}\`,
+    params,
+    options
+  ) as Promise<GetPetResult>;
+}
+
+interface RequestOptions {
+  signal?: AbortSignal;
+}
+
+async function request(
+  method: string,
+  url: string,
+  params: any = {},
+  options: RequestOptions = {}
+): Promise<any> {
+  const requestHeaders = new Headers(params.headers);
+  const contentType = requestHeaders.get(\\"Content-Type\\") || \\"\\";
+
+  const body =
+    params.data && contentType.includes(\\"json\\")
+      ? JSON.stringify(params.data)
+      : params.data;
+
+  const query = params.query ? \`\${new URLSearchParams(params.query)}\` : \\"\\";
+
+  const response = await fetch(\`\${url}\${query}\`, {
+    method,
+    body,
+    credentials: \\"same-origin\\",
+    signal: options.signal,
+    headers: requestHeaders
+  });
+
+  const { status, headers } = response;
+  const responseContentType = headers.get(\\"Content-Type\\");
+
+  let data;
+
+  if (responseContentType.includes(\\"json\\")) {
+    data = await response.json();
+  } else if (responseContentType.includes(\\"octet-stream\\")) {
+    data = await response.blob();
+  } else if (responseContentType.includes(\\"text\\")) {
+    data = await response.text();
+  }
+
+  return { status, headers, data };
+}
+"
+`;
