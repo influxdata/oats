@@ -7,8 +7,7 @@ import { get } from "lodash"
 import { PathOperation, Operation, OPERATIONS } from "./types"
 
 import {
-  formatPathOp,
-  formatLib,
+  formatPathOps,
   formatTypeDeclaration,
   formatTypeField,
   isTypeNamed
@@ -296,9 +295,7 @@ export async function generate(
 
   if (!typesOnly) {
     messyOutput += "\n\n"
-    messyOutput += formatLib()
-    messyOutput += "\n\n"
-    messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
+    messyOutput += formatPathOps(generator.pathOps)
   }
 
   const prettierConfig = await resolveConfig(path.resolve(__dirname, "../.."))
