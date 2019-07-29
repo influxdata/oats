@@ -304,7 +304,14 @@ export async function generate(
     messyOutput += formatLib()
   }
 
-  const prettierConfig = await resolveConfig(path.resolve(__dirname, "../.."))
+  // Assumes that the location of this module is in:
+  //
+  //     $PROJECT/node_modules/@chnn/oats/dist
+  //
+  // We want to use `$PROJECT` as the location of the prettier config.
+  const prettierLocation = path.resolve(__dirname, "..", "..", "..", "..")
+
+  const prettierConfig = await resolveConfig(prettierLocation)
 
   const output = format(messyOutput, {
     ...prettierConfig,
