@@ -18,10 +18,13 @@ export function isTypeNamed(type: string): boolean {
   }
 
   const code = type.charCodeAt(0)
+  const startsAlphaNumeric =
+    (code > 64 && code < 91) || (code > 96 && code < 123)
 
-  // Assume that if a type starts with an alphabetical character, then it is a
-  // named type
-  return (code > 64 && code < 91) || (code > 96 && code < 123)
+  const includesUnion = type.includes("|")
+  const includesIntersection = type.includes("&")
+
+  return startsAlphaNumeric && !includesUnion && !includesIntersection
 }
 
 export function formatTypeDeclaration(name: string, impl: string): string {
