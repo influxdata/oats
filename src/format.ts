@@ -143,13 +143,14 @@ function formatName({ path, operation }: PathOperation): string {
   const nicePathName = path
     .split("/")
     .map((p, i, ps) => {
-      const isGettingSingleResource =
-        operation === "get" && i === ps.length - 2 && ps[i + 1].startsWith("{")
-
       const isAddressingSingleResource =
-        operation !== "get" && i === ps.length - 1
+        ["get", "patch", "put", "delete"].includes(operation) &&
+        i === ps.length - 2 &&
+        ps[i + 1].startsWith("{")
 
-      if (isGettingSingleResource || isAddressingSingleResource) {
+      const isCreatingResource = operation === "post" && i === ps.length - 1
+
+      if (isCreatingResource || isAddressingSingleResource) {
         return depluralize(p)
       }
 
