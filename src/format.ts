@@ -53,17 +53,16 @@ export function formatTypeDeclaration(name: string, impl: string): string {
 
 export function formatPathOp(pathOp: PathOperation): string {
   const functionOutput = `
-export function ${formatName(pathOp)}(
+export const ${formatName(pathOp)} = (
   params: ${paramsName(pathOp)},
   options: RequestOptions = {}
-): Promise<${resultName(pathOp)}> {
-  return request(
+): Promise<${resultName(pathOp)}> => 
+  request(
     "${pathOp.operation.toUpperCase()}",
     ${formatURL(pathOp)},
     ${formatParamsArg(pathOp)},
     options,
   ) as Promise<${resultName(pathOp)}>
-}
 `.trim()
 
   return `${formatPathOpTypes(pathOp)}\n\n${functionOutput}`
@@ -87,12 +86,12 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function request(
+const request = async (
   method: string,
   url: string,
   params: any = {},
   options: RequestOptions = {}
-): Promise<any> {
+): Promise<any> => {
   const requestHeaders = new Headers(params.headers)
   const contentType = requestHeaders.get("Content-Type") || ""
 
@@ -101,7 +100,7 @@ async function request(
       ? JSON.stringify(params.data)
       : params.data
 
-  const query = params.query ? \`\${new URLSearchParams(params.query)}\` : ""
+  const query = params.query ? \`?\${new URLSearchParams(params.query)}\` : ""
 
   const response = await fetch(\`\${url}\${query}\`, {
     method,

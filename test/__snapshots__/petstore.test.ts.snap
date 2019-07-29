@@ -30,110 +30,16 @@ export interface Error {
   message: string;
 }
 
-export interface GetPetsParams {
-  query?: {
-    limit?: number;
-  };
-}
-
-type GetPetsResult = GetPetsOKResult | GetPetsDefaultResult;
-
-interface GetPetsOKResult {
-  status: 200;
-  headers: Headers;
-  data: Pets;
-}
-
-interface GetPetsDefaultResult {
-  status: 500;
-  headers: Headers;
-  data: Error;
-}
-
-export function getPets(
-  params: GetPetsParams,
-  options: RequestOptions = {}
-): Promise<GetPetsResult> {
-  return request(
-    \\"GET\\",
-    \\"http://petstore.swagger.io/v1/pets\\",
-    params,
-    options
-  ) as Promise<GetPetsResult>;
-}
-
-export interface PostPetParams {
-  data: Pet;
-}
-
-type PostPetResult = PostPetOKResult | PostPetDefaultResult;
-
-interface PostPetOKResult {
-  status: 200;
-  headers: Headers;
-  data: {
-    pet: Pet;
-  };
-}
-
-interface PostPetDefaultResult {
-  status: 500;
-  headers: Headers;
-  data: Error;
-}
-
-export function postPet(
-  params: PostPetParams,
-  options: RequestOptions = {}
-): Promise<PostPetResult> {
-  return request(
-    \\"POST\\",
-    \\"http://petstore.swagger.io/v1/pets\\",
-    { ...params, headers: { \\"Content-Type\\": \\"application/json\\" } },
-    options
-  ) as Promise<PostPetResult>;
-}
-
-export interface GetPetParams {
-  petID: string;
-}
-
-type GetPetResult = GetPetOKResult | GetPetDefaultResult;
-
-interface GetPetOKResult {
-  status: 200;
-  headers: Headers;
-  data: Pets;
-}
-
-interface GetPetDefaultResult {
-  status: 500;
-  headers: Headers;
-  data: Error;
-}
-
-export function getPet(
-  params: GetPetParams,
-  options: RequestOptions = {}
-): Promise<GetPetResult> {
-  return request(
-    \\"GET\\",
-    \`http://petstore.swagger.io/v1/pets/\${params.petID}\`,
-    params,
-    options
-  ) as Promise<GetPetResult>;
-}
-
 interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function request(
+const request = async (
   method: string,
   url: string,
   params: any = {},
   options: RequestOptions = {}
-): Promise<any> {
+): Promise<any> => {
   const requestHeaders = new Headers(params.headers);
   const contentType = requestHeaders.get(\\"Content-Type\\") || \\"\\";
 
@@ -142,7 +48,7 @@ async function request(
       ? JSON.stringify(params.data)
       : params.data;
 
-  const query = params.query ? \`\${new URLSearchParams(params.query)}\` : \\"\\";
+  const query = params.query ? \`?\${new URLSearchParams(params.query)}\` : \\"\\";
 
   const response = await fetch(\`\${url}\${query}\`, {
     method,
@@ -166,6 +72,97 @@ async function request(
   }
 
   return { status, headers, data };
+};
+
+export interface GetPetsParams {
+  query?: {
+    limit?: number;
+  };
 }
+
+type GetPetsResult = GetPetsOKResult | GetPetsDefaultResult;
+
+interface GetPetsOKResult {
+  status: 200;
+  headers: Headers;
+  data: Pets;
+}
+
+interface GetPetsDefaultResult {
+  status: 500;
+  headers: Headers;
+  data: Error;
+}
+
+export const getPets = (
+  params: GetPetsParams,
+  options: RequestOptions = {}
+): Promise<GetPetsResult> =>
+  request(
+    \\"GET\\",
+    \\"http://petstore.swagger.io/v1/pets\\",
+    params,
+    options
+  ) as Promise<GetPetsResult>;
+
+export interface PostPetParams {
+  data: Pet;
+}
+
+type PostPetResult = PostPetOKResult | PostPetDefaultResult;
+
+interface PostPetOKResult {
+  status: 200;
+  headers: Headers;
+  data: {
+    pet: Pet;
+  };
+}
+
+interface PostPetDefaultResult {
+  status: 500;
+  headers: Headers;
+  data: Error;
+}
+
+export const postPet = (
+  params: PostPetParams,
+  options: RequestOptions = {}
+): Promise<PostPetResult> =>
+  request(
+    \\"POST\\",
+    \\"http://petstore.swagger.io/v1/pets\\",
+    { ...params, headers: { \\"Content-Type\\": \\"application/json\\" } },
+    options
+  ) as Promise<PostPetResult>;
+
+export interface GetPetParams {
+  petID: string;
+}
+
+type GetPetResult = GetPetOKResult | GetPetDefaultResult;
+
+interface GetPetOKResult {
+  status: 200;
+  headers: Headers;
+  data: Pets;
+}
+
+interface GetPetDefaultResult {
+  status: 500;
+  headers: Headers;
+  data: Error;
+}
+
+export const getPet = (
+  params: GetPetParams,
+  options: RequestOptions = {}
+): Promise<GetPetResult> =>
+  request(
+    \\"GET\\",
+    \`http://petstore.swagger.io/v1/pets/\${params.petID}\`,
+    params,
+    options
+  ) as Promise<GetPetResult>;
 "
 `;
