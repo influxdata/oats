@@ -111,7 +111,7 @@ const request = async (
   })
 
   const { status, headers } = response
-  const responseContentType = headers.get("Content-Type")
+  const responseContentType = headers.get("Content-Type") || ""
 
   let data
 
