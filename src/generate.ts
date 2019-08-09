@@ -283,8 +283,7 @@ class Generator {
 }
 
 export async function generate(
-  docOrPathToDoc: string | OpenAPIV3.Document,
-  { typesOnly = false } = {}
+  docOrPathToDoc: string | OpenAPIV3.Document
 ): Promise<string> {
   const doc = (await bundle(docOrPathToDoc)) as OpenAPIV3.Document
 
@@ -297,12 +296,10 @@ export async function generate(
     .map(([name, impl]) => formatTypeDeclaration(name, impl))
     .join("\n\n")
 
-  if (!typesOnly) {
-    messyOutput += "\n\n"
-    messyOutput += formatLib()
-    messyOutput += "\n\n"
-    messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
-  }
+  messyOutput += "\n\n"
+  messyOutput += formatLib()
+  messyOutput += "\n\n"
+  messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
 
   // Assumes that the location of this module is in:
   //

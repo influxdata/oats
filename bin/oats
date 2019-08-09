@@ -3,13 +3,10 @@
 const program = require("commander")
 const { generate } = require("../dist/generate")
 
-program
-  .option("--types-only", "only output type definitions", false)
-  .arguments("<spec>")
-  .action(async (spec, { typesOnly }) => {
-    const output = await generate(spec, { typesOnly })
+program.arguments("<openapi spec>").action(async spec => {
+  const output = await generate(spec)
 
-    console.log(output)
-  })
+  process.stdout.write(output)
+})
 
 program.parse(process.argv)
