@@ -43,6 +43,12 @@ const request = async (
   const requestHeaders = new Headers(params.headers);
   const contentType = requestHeaders.get(\\"Content-Type\\") || \\"\\";
 
+  if (params.auth) {
+    const credentials = btoa(\`\${params.auth.username}:\${params.auth.password}\`);
+
+    requestHeaders.append(\\"Authorization\\", \`Basic \${credentials}\`);
+  }
+
   const body =
     params.data && contentType.includes(\\"json\\")
       ? JSON.stringify(params.data)

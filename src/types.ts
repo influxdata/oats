@@ -25,6 +25,8 @@ export type PathOperation = {
   // e.g. "List all users with member privileges for a scraper target"
   summary: string
 
+  basicAuth: boolean
+
   positionalParams: Array<{
     name: string
     description: string

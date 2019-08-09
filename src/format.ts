@@ -95,6 +95,12 @@ const request = async (
   const requestHeaders = new Headers(params.headers)
   const contentType = requestHeaders.get("Content-Type") || ""
 
+  if (params.auth) {
+    const credentials = btoa(\`\${params.auth.username}:\${params.auth.password}\`)
+
+    requestHeaders.append('Authorization', \`Basic \${credentials}\`)
+  }
+
   const body =
     params.data && contentType.includes("json")
       ? JSON.stringify(params.data)
@@ -247,10 +253,25 @@ function printParamsType(pathOp: PathOperation): string {
   ${formatQueryParams(pathOp)}
 
   ${formatHeadersParams(pathOp)}
+
+  ${formatBasicAuthParam(pathOp)}
 }
 `.trim()
 
   return formatTypeDeclaration(paramsName(pathOp), impl)
+}
+
+function formatBasicAuthParam(pathOp: PathOperation): string {
+  if (!pathOp.basicAuth) {
+    return ""
+  }
+
+  return `
+auth: {
+  username: string;
+  password: string;
+};
+`.trim()
 }
 
 function printResultTypes(pathOp: PathOperation): string {

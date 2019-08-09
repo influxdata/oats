@@ -2,7 +2,7 @@ import * as path from "path"
 import { OpenAPIV3 } from "openapi-types"
 import { bundle } from "swagger-parser"
 import { format, resolveConfig } from "prettier"
-import { get } from "lodash"
+import { get, flatMap } from "lodash"
 
 import { PathOperation, Operation, OPERATIONS } from "./types"
 
@@ -45,6 +45,7 @@ class Generator {
       server: this.doc.servers[0].url,
       path,
       operation,
+      basicAuth: this.requiresBasicAuth(operationObj),
       summary: operationObj.summary,
       positionalParams: this.collectParameters(parameters, "path"),
       headerParams: this.collectParameters(parameters, "header"),
@@ -54,6 +55,25 @@ class Generator {
     }
 
     this.pathOps.push(pathOp)
+  }
+
+  private requiresBasicAuth(operationObj: OpenAPIV3.OperationObject): boolean {
+    if (!operationObj.security) {
+      return false
+    }
+
+    const securitySchemeNames = flatMap(operationObj.security, d => Object.keys(d))
+    const securitySchemes = get(this.doc, "components.securitySchemes", {})
+
+    return securitySchemeNames.some(name => {
+      if (!securitySchemes[name]) {
+        return false
+      }
+
+      const scheme = this.followReference(securitySchemes[name])
+
+      return scheme.type === "http" && scheme.scheme === "basic"
+    })
   }
 
   private collectParameters(
