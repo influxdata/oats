@@ -1,5 +1,5 @@
 {
-  "name": "@chnn/oats",
+  "name": "@influxdata/oats",
   "version": "0.3.0",
   "description": "",
   "main": "dist/index.js",
@@ -8,8 +8,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "rm -rf dist && tsc",
-    "prepublishOnly": "yarn build"
+    "build": "rm -rf dist && tsc"
   },
   "author": "",
   "license": "MIT",
