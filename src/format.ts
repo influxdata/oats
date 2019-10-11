@@ -56,7 +56,7 @@ export function formatPathOp(pathOp: PathOperation): string {
 export const ${formatName(pathOp)} = (
   params: ${paramsName(pathOp)},
   options: RequestOptions = {}
-): Promise<${resultName(pathOp)}> => 
+): Promise<${resultName(pathOp)}> =>
   request(
     "${pathOp.operation.toUpperCase()}",
     ${formatURL(pathOp)},
@@ -86,12 +86,31 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-const request = async (
+export type RequestHandler = (
+  url: string,
+  query: string,
+  init: RequestInit
+) => {url: string, query: string, init: RequestInit}
+export type ResponseHandler = (
+  status: number,
+  headers: Headers,
+  data: any
+) => {status: number, headers: Headers, data: any}
+
+const RequestContext = function(
+  requestHandler: RequestHandler,
+  responseHandler: ResponseHandler
+) {
+  this.requestHandler = requestHandler
+  this.responseHandler = responseHandler
+}
+
+RequestContext.prototype.request = async function(
   method: string,
   url: string,
   params: any = {},
   options: RequestOptions = {}
-): Promise<any> => {
+): Promise<any> {
   const requestHeaders = new Headers(params.headers)
   const contentType = requestHeaders.get("Content-Type") || ""
 
@@ -108,13 +127,19 @@ const request = async (
 
   const query = params.query ? \`?\${new URLSearchParams(params.query)}\` : ""
 
-  const response = await fetch(\`\${url}\${query}\`, {
+  const {
+    url: middlewareUrl,
+    query: middlewareQuery,
+    init,
+  } = this.requestHandler(url, query, {
     method,
     body,
-    credentials: "same-origin",
+    credentials: 'same-origin',
     signal: options.signal,
-    headers: requestHeaders
+    headers: requestHeaders,
   })
+
+  const response = await fetch(\`\${middlewareUrl}\${middlewareQuery}\`, init)
 
   const { status, headers } = response
   const responseContentType = headers.get("Content-Type") || ""
@@ -129,9 +154,29 @@ const request = async (
     data = await response.text()
   }
 
-  return { status, headers, data }
+  return this.responseHandler(status, headers, data)
 }
 
+RequestContext.prototype.setRequestHandler = function(requestHandler: RequestHandler) {
+  this.requestHandler = requestHandler
+}
+
+RequestContext.prototype.setResponseHandler = function(responseHandler: ResponseHandler) {
+  this.responseHandler = responseHandler
+}
+
+const rc = new RequestContext(
+  (url, query, init) => {
+    return {url, query, init}
+  },
+  (status, headers, data) => {
+    return {status, headers, data}
+  }
+)
+const request = rc.request.bind(rc)
+
+export const setRequestHandler = rc.setRequestHandler.bind(rc)
+export const setResponseHandler = rc.setResponseHandler.bind(rc)
 
 `.trim()
 }
