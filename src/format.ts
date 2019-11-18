@@ -175,6 +175,7 @@ const rc = new RequestContext(
 )
 const request = rc.request.bind(rc)
 
+export { request }
 export const setRequestHandler = rc.setRequestHandler.bind(rc)
 export const setResponseHandler = rc.setResponseHandler.bind(rc)
 
