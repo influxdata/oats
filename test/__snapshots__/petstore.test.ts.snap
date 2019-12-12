@@ -126,9 +126,10 @@ const rc = new RequestContext(
   }
 );
 const request = rc.request.bind(rc);
+const setRequestHandler = rc.setRequestHandler.bind(rc);
+const setResponseHandler = rc.setResponseHandler.bind(rc);
 
-export const setRequestHandler = rc.setRequestHandler.bind(rc);
-export const setResponseHandler = rc.setResponseHandler.bind(rc);
+export { request, setRequestHandler, setResponseHandler };
 
 export interface GetPetsParams {
   query?: {
