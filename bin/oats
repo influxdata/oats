@@ -4,6 +4,7 @@ const program = require("commander")
 const { generate } = require("../dist/generate")
 const version = require("../package.json").version
 const parts = ["types", "request", "operations"]
+const truethy = x => !["false","no","0"].includes(x)
 
 let openApiSpec = ""
 program
@@ -16,14 +17,17 @@ program
       program.types = program.request = program.operations = false
       val.split(",").forEach(elem => {
         if (!parts.includes(elem)) {
-          throw new Error(`Unsupported part '${elem}', supported parts are: ${parts}`)
+          throw new Error(
+            `Unsupported part '${elem}', supported parts are: ${parts}`
+          )
         }
         program[elem] = true
       })
     },
     "types,request,operations"
   )
-  .option("-p, --prettier [true/false]", "prettier output code", true)
+  .option("-p, --prettier [true/false]", "prettier output code", truethy, true)
+  .option("--withDoc [true/false]", "document generated types", truethy, true)
   .arguments("<openApiSpec>")
   .action(spec => (openApiSpec = spec))
   .parse(process.argv)
