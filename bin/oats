@@ -3,21 +3,33 @@
 const program = require("commander")
 const { generate } = require("../dist/generate")
 const version = require("../package.json").version
+const parts = ["types", "request", "operations"]
 
-let openApiSpec = ''
+let openApiSpec = ""
 program
   .version(version)
   .description("An opinionated OpenAPI doc to TypeScript HTTP client generator")
-  .option("-t, --types [true/false]", "generate types", true)
-  .option("-r, --request [true/false]", "generate request library", true)
-  .option("-o, --operations [true/false]", "generate operations", true)
+  .option(
+    "-i, --include <parts>",
+    "include only specified code parts",
+    function(val) {
+      program.types = program.request = program.operations = false
+      val.split(",").forEach(elem => {
+        if (!parts.includes(elem)) {
+          throw new Error(`Unsupported part '${elem}', supported parts are: ${parts}`)
+        }
+        program[elem] = true
+      })
+    },
+    "types,request,operations"
+  )
   .option("-p, --prettier [true/false]", "prettier output code", true)
   .arguments("<openApiSpec>")
-  .action(spec => openApiSpec = spec)
+  .action(spec => (openApiSpec = spec))
   .parse(process.argv)
 
-  if (openApiSpec){
-    generate(openApiSpec, program).then(output => process.stdout.write(output))
-  } else {
-    program.help()
-  }
+if (openApiSpec) {
+  generate(openApiSpec, program).then(output => process.stdout.write(output))
+} else {
+  program.help()
+}
