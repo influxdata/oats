@@ -2,11 +2,22 @@
 
 const program = require("commander")
 const { generate } = require("../dist/generate")
+const version = require("../package.json").version
 
-program.arguments("<openapi spec>").action(async spec => {
-  const output = await generate(spec)
+let openApiSpec = ''
+program
+  .version(version)
+  .description("An opinionated OpenAPI doc to TypeScript HTTP client generator")
+  .option("-t, --types [true/false]", "generate types", true)
+  .option("-r, --request [true/false]", "generate request library", true)
+  .option("-o, --operations [true/false]", "generate operations", true)
+  .option("-p, --prettier [true/false]", "prettier output code", true)
+  .arguments("<openApiSpec>")
+  .action(spec => openApiSpec = spec)
+  .parse(process.argv)
 
-  process.stdout.write(output)
-})
-
-program.parse(process.argv)
+  if (openApiSpec){
+    generate(openApiSpec, program).then(output => process.stdout.write(output))
+  } else {
+    program.help()
+  }
