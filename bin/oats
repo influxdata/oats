@@ -3,6 +3,7 @@
 const program = require("commander")
 const { generate } = require("../dist/generate")
 const version = require("../package.json").version
+const fs = require("fs")
 const parts = ["types", "request", "operations"]
 const truethy = x => !["false","no","0"].includes(x)
 
@@ -16,24 +17,32 @@ program
     function(val) {
       program.types = program.request = program.operations = false
       val.split(",").forEach(elem => {
-        if (!parts.includes(elem)) {
-          throw new Error(
-            `Unsupported part '${elem}', supported parts are: ${parts}`
-          )
+        if (elem){
+          if (!parts.includes(elem)) {
+            throw new Error(
+              `Unsupported part '${elem}', supported parts are: ${parts}`
+            )
+          }
+          program[elem] = true
         }
-        program[elem] = true
       })
     },
     "types,request,operations"
   )
   .option("-p, --prettier [true/false]", "prettier output code", truethy, true)
   .option("--withDoc [true/false]", "document generated types", truethy, true)
+  .option("--storeOperations <file>", "store operations to file")
   .arguments("<openApiSpec>")
   .action(spec => (openApiSpec = spec))
   .parse(process.argv)
 
 if (openApiSpec) {
-  generate(openApiSpec, program).then(output => process.stdout.write(output))
+  generate(openApiSpec, {
+    ... program,
+    onParsed: program.storeOperations ? (function (parsed){
+      fs.writeFileSync(program.storeOperations, JSON.stringify(parsed.pathOps,null,2))
+    }): undefined
+  }).then(output => process.stdout.write(output))
 } else {
   program.help()
 }

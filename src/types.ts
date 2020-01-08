@@ -15,6 +15,9 @@ export type PathOperation = {
   // e.g. /api/v1
   server: string
 
+  // e.g. GetScrapersID
+  operationId: string
+  
   // e.g. "/scrapers/{id}/members"
   path: string
 
