@@ -98,7 +98,7 @@ RequestContext.prototype.request = async function(
     data = await response.json();
   } else if (responseContentType.includes(\\"octet-stream\\")) {
     data = await response.blob();
-  } else if (responseContentType.includes(\\"text\\")) {
+  } else {
     data = await response.text();
   }
 
