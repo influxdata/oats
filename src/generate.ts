@@ -130,7 +130,7 @@ class Generator {
     const fallbackEntry = mediaTypeEntries[0]
 
     if (fallbackEntry) {
-      return { description, required, mediaType: textEntry[0], type: "any" }
+      return { description, required, mediaType: fallbackEntry[0], type: "any" }
     }
 
     return null
