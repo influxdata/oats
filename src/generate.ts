@@ -381,7 +381,7 @@ export async function generate(
       if (!doc.components) {
         doc.components = {}
       }
-  } else {
+    } else {
       // merge paths, do not override
       for (const [path, pathItemObj] of Object.entries(newDoc.paths)) {
         if (!doc.paths[path]) {
@@ -389,10 +389,12 @@ export async function generate(
         }
       }
       // merge types
-      if (newDoc.components){
-        for(const componentType of componentTypes){
+      if (newDoc.components) {
+        for (const componentType of componentTypes) {
           if (newDoc.components[componentType]) {
-            for (const [key, val] of Object.entries(newDoc.components[componentType])) {
+            for (const [key, val] of Object.entries(
+              newDoc.components[componentType]
+            )) {
               if (!doc.components[componentType]) {
                 doc.components[componentType] = {}
               }
