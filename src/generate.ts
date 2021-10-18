@@ -305,11 +305,11 @@ class Generator implements ParsedOpenApi {
       return obj.required
     }
     let required: string[] | undefined
-    if (obj.oneOf && obj.oneOf.length){
+    if (obj.oneOf && obj.oneOf.length) {
       // DBRP type defines required properties using oneOf combinations
       // required are those that are present in all combinations
       obj.oneOf.forEach((schema: any) => {
-        if (schema.required && schema.required.length){
+        if (schema.required && schema.required.length) {
           if (required === undefined) {
             required = schema.required
           } else {
@@ -355,11 +355,54 @@ export interface GenerateOptions {
   onParsed?: (parsed: ParsedOpenApi) => void
 }
 
+const componentTypes = [
+  "schemas",
+  "responses",
+  "examples",
+  "requestBodies",
+  "headers",
+  "securitySchemes",
+  "links",
+  "callbacks"
+]
+
 export async function generate(
-  docOrPathToDoc: string | OpenAPIV3.Document,
-  generateOptions: Partial<GenerateOptions>
+  docPath: string | string[],
+  generateOptions: Partial<GenerateOptions> = {}
 ): Promise<string> {
-  const doc = (await bundle(docOrPathToDoc)) as OpenAPIV3.Document
+  let doc: OpenAPIV3.Document
+  if (!Array.isArray(docPath)) {
+    docPath = [docPath]
+  }
+  for (const path of docPath) {
+    const newDoc = (await bundle(path)) as OpenAPIV3.Document
+    if (!doc) {
+      doc = newDoc
+      if (!doc.components) {
+        doc.components = {}
+        componentTypes.forEach(x => doc.components[x] = {})
+      }
+    } else {
+      // merge paths, do not override
+      for (const [path, pathItemObj] of Object.entries(newDoc.paths)) {
+        if (!doc.paths[path]) {
+          doc.paths[path] = pathItemObj
+        }
+      }
+      // merge types
+      if (newDoc.components){
+        for(const componentType of componentTypes){
+          if (newDoc.components[componentType]) {
+            for (const [key, val] of Object.entries(newDoc.components[componentType])) {
+              if (!doc.components[componentType][key]) {
+                doc.components[componentType][key] = val
+              }
+            }
+          }
+        }
+      }
+    }
+  }
   const options: GenerateOptions = {
     types: true,
     request: true,
