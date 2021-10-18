@@ -380,9 +380,11 @@ export async function generate(
       doc = newDoc
       if (!doc.components) {
         doc.components = {}
-        componentTypes.forEach(x => doc.components[x] = {})
       }
-    } else {
+      componentTypes.forEach(x => {
+        if (!doc.components[x]) doc.components[x] = {}
+      })
+  } else {
       // merge paths, do not override
       for (const [path, pathItemObj] of Object.entries(newDoc.paths)) {
         if (!doc.paths[path]) {
