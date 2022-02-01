@@ -31,6 +31,7 @@ program
   )
   .option("-p, --prettier [true/false]", "prettier output code", truethy, true)
   .option("--withDoc [true/false]", "document generated types", truethy, true)
+  .option("--cloudApiSpec <file>", "Cloud API spec to merge into generated output (example: cloud.yml)")
   .option("--storeOperations <file>", "store operations to file")
   .arguments("<openApiSpec...>")
   .action(spec => (openApiSpec = spec))

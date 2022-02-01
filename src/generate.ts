@@ -352,6 +352,7 @@ export interface GenerateOptions {
   operations: boolean
   prettier: boolean
   withDoc: boolean
+  cloudApiSpec?: string
   onParsed?: (parsed: ParsedOpenApi) => void
 }
 
@@ -406,6 +407,12 @@ export async function generate(
         }
       }
     }
+    if (generateOptions.cloudApiSpec) {
+      const cloudApi = (await bundle(generateOptions.cloudApiSpec)) as OpenAPIV3.Document
+      const cloudTypes = cloudApi.components.schemas['Resource']['properties']['type'];
+      const ossTypes = doc.components.schemas['Resource']['properties']['type'];
+      ossTypes.enum = ossTypes.enum.concat(cloudTypes.enum.filter(cloudType => !ossTypes.enum.includes(cloudType)))
+    }
   }
   const options: GenerateOptions = {
     types: true,
@@ -413,6 +420,7 @@ export async function generate(
     operations: true,
     prettier: true,
     withDoc: true,
+    cloudApiSpec: null,
     ...generateOptions
   }
   const generator = new Generator(doc, options.withDoc)
