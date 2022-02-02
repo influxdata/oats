@@ -352,6 +352,7 @@ export interface GenerateOptions {
   operations: boolean
   prettier: boolean
   withDoc: boolean
+  patchScript?: string
   onParsed?: (parsed: ParsedOpenApi) => void
 }
 
@@ -406,6 +407,10 @@ export async function generate(
         }
       }
     }
+    if (generateOptions.patchScript) {
+      const patchScript = require(generateOptions.patchScript)
+      doc = await patchScript.patch(doc, (swagger) => bundle(swagger))
+    }
   }
   const options: GenerateOptions = {
     types: true,
@@ -413,6 +418,7 @@ export async function generate(
     operations: true,
     prettier: true,
     withDoc: true,
+    patchScript: null,
     ...generateOptions
   }
   const generator = new Generator(doc, options.withDoc)

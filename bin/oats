@@ -31,6 +31,7 @@ program
   )
   .option("-p, --prettier [true/false]", "prettier output code", truethy, true)
   .option("--withDoc [true/false]", "document generated types", truethy, true)
+  .option("--patchScript <file>", "Script to modify openapi document (example: $PWD/append-cloud-definitions.js)")
   .option("--storeOperations <file>", "store operations to file")
   .arguments("<openApiSpec...>")
   .action(spec => (openApiSpec = spec))
