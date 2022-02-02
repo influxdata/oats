@@ -409,7 +409,7 @@ export async function generate(
     }
     if (generateOptions.patchScript) {
       const patchScript = require(generateOptions.patchScript)
-      await patchScript.patch(doc)
+      doc = await patchScript.patch(doc, (swagger) => bundle(swagger))
     }
   }
   const options: GenerateOptions = {
