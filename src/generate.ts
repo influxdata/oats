@@ -1,6 +1,6 @@
 import * as path from "path"
 import { OpenAPIV3 } from "openapi-types"
-import { bundle } from "swagger-parser"
+import SwaggerParser, {bundle} from "swagger-parser"
 import { format, resolveConfig } from "prettier"
 import { get, flatMap, intersection } from "lodash"
 
@@ -409,7 +409,7 @@ export async function generate(
     }
     if (generateOptions.patchScript) {
       const patchScript = require(generateOptions.patchScript)
-      doc = await patchScript.patch(doc, (swagger) => bundle(swagger))
+      doc = await patchScript.patch(doc, SwaggerParser)
     }
   }
   const options: GenerateOptions = {
