@@ -1,6 +1,6 @@
 import * as path from "path"
 import { OpenAPIV3 } from "openapi-types"
-import SwaggerParser, { bundle } from "swagger-parser"
+import SwaggerParser from "swagger-parser"
 import { format, resolveConfig } from "prettier"
 import { get, flatMap, intersection } from "lodash"
 
@@ -376,7 +376,7 @@ export async function generate(
     docPath = [docPath]
   }
   for (const path of docPath) {
-    const newDoc = (await bundle(path)) as OpenAPIV3.Document
+    const newDoc = (await SwaggerParser.bundle(path)) as OpenAPIV3.Document
     if (!doc) {
       doc = newDoc
       if (!doc.components) {
