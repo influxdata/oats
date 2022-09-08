@@ -31,7 +31,7 @@ Options:
   -i, --include <parts>        include only specified code parts (default: "types,request,operations")
   -p, --prettier [true/false]  prettier output code (default: true)
   --withDoc [true/false]       document generated types (default: true)
-  --patchScript <file>         Script to modify openapi document (example: https://github.com/influxdata/influxdb-client-js/blob/master/packages/apis/scripts/patchSwagger.js)
+  --patchScript <file>         apply script that modifies openapi document (example: https://github.com/influxdata/influxdb-client-js/blob/master/packages/apis/scripts/patchSwagger.js)
   --storeOperations <file>     store operations to file
   -h, --help                   output usage information
   ```
