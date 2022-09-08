@@ -260,10 +260,6 @@ class Generator implements ParsedOpenApi {
   private getTypeFromObjectSchemaObj(
     obj: OpenAPIV3.NonArraySchemaObject
   ): string {
-    if (obj.properties) {
-      return this.getTypeFromPropertiesSchemaObj(obj)
-    }
-
     if (obj.allOf) {
       return this.getTypeFromAllOf(obj)
     }
@@ -274,6 +270,9 @@ class Generator implements ParsedOpenApi {
 
     if (obj.anyOf) {
       return this.getTypeFromOneOf(obj)
+    }
+    if (obj.properties) {
+      return this.getTypeFromPropertiesSchemaObj(obj)
     }
 
     return "any"
