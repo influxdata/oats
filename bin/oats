@@ -24,7 +24,7 @@ program
     "comma sepated list of code parts to generate",
     function(val) {
       program.types = program.request = program.operations = false
-      val.split(",").forEach(elem => {
+      val.split(",").map(x => x.trim()).forEach(elem => {
         if (elem) {
           if (!parts.includes(elem)) {
             throw new Error(
