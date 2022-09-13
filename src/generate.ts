@@ -291,9 +291,7 @@ class Generator implements ParsedOpenApi {
       if (this.withDoc && description) {
         retVal = `/** ${description} */\n  `
       }
-      return (
-        retVal + formatTypeField(readOnly, name, required, this.getType(value))
-      )
+      return `${retVal}${formatTypeField(readOnly, name, required, this.getType(value))}`
     })
 
     return `{\n  ${fields.join("\n  ")}\n}`
