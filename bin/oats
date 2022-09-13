@@ -40,7 +40,7 @@ program
 if (openApiSpec) {
   generate(openApiSpec, {
     ... program,
-    onParsed: program.storeOperations ? (function (parsed){
+    onParsed: program.storeOperations ? (function (parsed) {
       fs.writeFileSync(program.storeOperations, JSON.stringify(parsed.pathOps,null,2))
     }): undefined
   }).then(output => process.stdout.write(output))
