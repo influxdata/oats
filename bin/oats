@@ -5,7 +5,15 @@ const { generate } = require("../dist/generate")
 const version = require("../package.json").version
 const fs = require("fs")
 const parts = ["types", "request", "operations"]
-const truethy = x => !["false","no","0"].includes(x)
+const parseBoolFlag = x => {
+  if (x === 'true'){
+    return true
+  }
+  if (x === 'false'){
+    return false
+  }
+  throw new Error("Unsupported flag value, true/false value is required!")
+}
 
 let openApiSpec = ""
 program
@@ -13,7 +21,7 @@ program
   .description("An opinionated OpenAPI doc to TypeScript HTTP client generator")
   .option(
     "-i, --include <parts>",
-    "include only specified code parts",
+    "comma sepated list of code parts to generate",
     function(val) {
       program.types = program.request = program.operations = false
       val.split(",").forEach(elem => {
@@ -29,8 +37,8 @@ program
     },
     "types,request,operations"
   )
-  .option("-p, --prettier [true/false]", "prettier output code", truethy, true)
-  .option("--withDoc [true/false]", "document generated types", truethy, true)
+  .option("-p, --prettier [true/false]", "prettier output code", parseBoolFlag, true)
+  .option("--withDoc [true/false]", "document generated types", parseBoolFlag, true)
   .option("--patchScript <file>", "Script to modify openapi document (example: https://github.com/influxdata/influxdb-client-js/blob/master/packages/apis/scripts/patchSwagger.js)")
   .option("--storeOperations <file>", "store operations to file")
   .arguments("<openApiSpec...>")
