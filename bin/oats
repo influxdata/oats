@@ -39,7 +39,7 @@ program
 
 if (openApiSpec) {
   generate(openApiSpec, {
-    ... program,
+    ...program,
     onParsed: program.storeOperations ? (function (parsed) {
       fs.writeFileSync(program.storeOperations, JSON.stringify(parsed.pathOps,null,2))
     }): undefined
