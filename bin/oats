@@ -12,7 +12,7 @@ const parseBoolFlag = x => {
   if (x === 'false'){
     return false
   }
-  throw new Error("Unsupported flag value, true/false value is required!")
+  throw new Error(`Unsupported flag value "${x}", supply "true" or "false"!`)
 }
 
 let openApiSpec = ""
