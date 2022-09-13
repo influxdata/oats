@@ -17,7 +17,7 @@ program
     function(val) {
       program.types = program.request = program.operations = false
       val.split(",").forEach(elem => {
-        if (elem){
+        if (elem) {
           if (!parts.includes(elem)) {
             throw new Error(
               `Unsupported part '${elem}', supported parts are: ${parts}`
