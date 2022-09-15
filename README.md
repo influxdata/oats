@@ -28,7 +28,7 @@ An opinionated OpenAPI doc to TypeScript HTTP client generator
 
 Options:
   -V, --version                output the version number
-  -i, --include <parts>        include only specified code parts (default: "types,request,operations")
+  -i, --include <parts>        comma sepated list of code parts to generate (all by default: "types,request,operations")
   -p, --prettier [true/false]  prettier output code (default: true)
   --withDoc [true/false]       document generated types (default: true)
   --patchScript <file>         apply script that modifies openapi document (example: https://github.com/influxdata/influxdb-client-js/blob/master/packages/apis/scripts/patchSwagger.js)
