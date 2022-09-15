@@ -1,8 +1,8 @@
 import * as path from "path"
 import { OpenAPIV3 } from "openapi-types"
-import { bundle } from "swagger-parser"
+import SwaggerParser from "swagger-parser"
 import { format, resolveConfig } from "prettier"
-import { get, flatMap } from "lodash"
+import { get, flatMap, intersection } from "lodash"
 
 import { PathOperation, Operation, OPERATIONS } from "./types"
 
@@ -14,13 +14,22 @@ import {
   isTypeNamed
 } from "./format"
 
-class Generator {
+interface TypeImpl {
+  impl: string
+  description?: string
+}
+
+export interface ParsedOpenApi {
+  pathOps: PathOperation[]
+  namedTypes: { [name: string]: TypeImpl }
+}
+class Generator implements ParsedOpenApi {
   public pathOps: PathOperation[] = []
-  public namedTypes: { [name: string]: string } = {}
+  public namedTypes: { [name: string]: TypeImpl } = {}
 
   private doc: OpenAPIV3.Document
 
-  constructor(doc: OpenAPIV3.Document) {
+  constructor(doc: OpenAPIV3.Document, readonly withDoc: boolean = true) {
     this.doc = doc
 
     for (const [path, pathItemObj] of Object.entries(doc.paths)) {
@@ -45,6 +54,7 @@ class Generator {
       server: this.doc.servers[0].url,
       path,
       operation,
+      operationId: operationObj.operationId,
       basicAuth: this.requiresBasicAuth(operationObj),
       summary: operationObj.summary,
       positionalParams: this.collectParameters(parameters, "path"),
@@ -205,13 +215,16 @@ class Generator {
       if (existingImpl) {
         return typeName
       } else {
-        this.namedTypes[typeName] = typeName
+        this.namedTypes[typeName] = { impl: typeName }
       }
 
       const schema = this.followReference(obj)
       const typeImpl = this.getTypeFromSchemaObj(schema)
 
-      this.namedTypes[typeName] = typeImpl
+      this.namedTypes[typeName] = {
+        impl: typeImpl,
+        description: schema.description
+      }
 
       return typeName
     }
@@ -258,7 +271,6 @@ class Generator {
     if (obj.anyOf) {
       return this.getTypeFromOneOf(obj)
     }
-
     if (obj.properties) {
       return this.getTypeFromPropertiesSchemaObj(obj)
     }
@@ -269,14 +281,41 @@ class Generator {
   private getTypeFromPropertiesSchemaObj(
     obj: OpenAPIV3.NonArraySchemaObject
   ): string {
+    const requiredProps = this.getRequiredProperties(obj)
     const fields = Object.entries(obj.properties).map(([name, value]) => {
       const readOnly = (value as any).readOnly
-      const required = (obj.required || []).includes(name)
+      const description = (value as any).description
+      const required = requiredProps.includes(name)
 
-      return formatTypeField(readOnly, name, required, this.getType(value))
+      let retVal = ""
+      if (this.withDoc && description) {
+        retVal = `/** ${description} */\n  `
+      }
+      return `${retVal}${formatTypeField(readOnly, name, required, this.getType(value))}`
     })
 
     return `{\n  ${fields.join("\n  ")}\n}`
+  }
+
+  private getRequiredProperties(obj: OpenAPIV3.NonArraySchemaObject): string[] {
+    if (obj.required) {
+      return obj.required
+    }
+    let required: string[] | undefined
+    if (obj.oneOf && obj.oneOf.length) {
+      // DBRP type defines required properties using oneOf combinations
+      // required are those that are present in all combinations
+      obj.oneOf.forEach((schema: any) => {
+        if (schema.required && schema.required.length) {
+          if (required === undefined) {
+            required = schema.required
+          } else {
+            required = intersection(required, schema.required)
+          }
+        }
+      })
+    }
+    return required || []
   }
 
   private getTypeFromAllOf(obj: OpenAPIV3.SchemaObject): string {
@@ -304,38 +343,129 @@ class Generator {
   }
 }
 
+export interface GenerateOptions {
+  types: boolean
+  request: boolean
+  operations: boolean
+  prettier: boolean
+  withDoc: boolean
+  patchScript?: string
+  onParsed?: (parsed: ParsedOpenApi) => void
+}
+
+const componentTypes = [
+  "schemas",
+  "responses",
+  "examples",
+  "requestBodies",
+  "headers",
+  "securitySchemes",
+  "links",
+  "callbacks"
+]
+
 export async function generate(
-  docOrPathToDoc: string | OpenAPIV3.Document
+  docPath: string | string[],
+  generateOptions: Partial<GenerateOptions> = {}
 ): Promise<string> {
-  const doc = (await bundle(docOrPathToDoc)) as OpenAPIV3.Document
+  let doc: OpenAPIV3.Document
+  if (!Array.isArray(docPath)) {
+    docPath = [docPath]
+  }
+  for (const path of docPath) {
+    const newDoc = (await SwaggerParser.bundle(path)) as OpenAPIV3.Document
+    if (!doc) {
+      doc = newDoc
+      if (!doc.components) {
+        doc.components = {}
+      }
+    } else {
+      // merge paths, do not override
+      for (const [path, pathItemObj] of Object.entries(newDoc.paths)) {
+        if (!doc.paths[path]) {
+          doc.paths[path] = pathItemObj
+        }
+      }
+      // merge types
+      if (newDoc.components) {
+        for (const componentType of componentTypes) {
+          if (newDoc.components[componentType]) {
+            for (const [key, val] of Object.entries(
+              newDoc.components[componentType]
+            )) {
+              if (!doc.components[componentType]) {
+                doc.components[componentType] = {}
+              }
+              if (!doc.components[componentType][key]) {
+                doc.components[componentType][key] = val
+              }
+            }
+          }
+        }
+      }
+    }
+    if (generateOptions.patchScript) {
+      const patchScript = require(generateOptions.patchScript)
+      doc = await patchScript.patch(doc, SwaggerParser)
+    }
+  }
+  const options: GenerateOptions = {
+    types: true,
+    request: true,
+    operations: true,
+    prettier: true,
+    withDoc: true,
+    patchScript: null,
+    ...generateOptions
+  }
+  const generator = new Generator(doc, options.withDoc)
+  if (options.onParsed) {
+    options.onParsed(generator)
+  }
 
-  const generator = new Generator(doc)
+  let output = ""
 
-  let messyOutput =
-    "// This file is generated by [oats][0] and should not be edited by hand.\n//\n// [0]: https://github.com/influxdata/oats\n\n"
+  if (options.types) {
+    output += Object.entries(generator.namedTypes)
+      .map(([name, typeImpl]) =>
+        formatTypeDeclaration(
+          name,
+          typeImpl.impl,
+          options.withDoc ? typeImpl.description : ""
+        )
+      )
+      .join("\n\n")
+    output += "\n\n"
+  }
+  if (options.request) {
+    output += formatLib()
+    output += "\n\n"
+  }
+  if (options.operations) {
+    output += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
+  }
 
-  messyOutput += Object.entries(generator.namedTypes)
-    .map(([name, impl]) => formatTypeDeclaration(name, impl))
-    .join("\n\n")
+  if (output) {
+    output =
+      "// This file is generated by [oats][0] and should not be edited by hand.\n//\n// [0]: https://github.com/influxdata/oats\n\n" +
+      output
+  }
 
-  messyOutput += "\n\n"
-  messyOutput += formatLib()
-  messyOutput += "\n\n"
-  messyOutput += generator.pathOps.map(op => formatPathOp(op)).join("\n\n")
+  if (output && options.prettier) {
+    // Assumes that the location of this module is in:
+    //
+    //     $PROJECT/node_modules/@influxdata/oats/dist
+    //
+    // We want to use `$PROJECT` as the location of the prettier config.
+    const prettierLocation = path.resolve(__dirname, "..", "..", "..", "..")
 
-  // Assumes that the location of this module is in:
-  //
-  //     $PROJECT/node_modules/@influxdata/oats/dist
-  //
-  // We want to use `$PROJECT` as the location of the prettier config.
-  const prettierLocation = path.resolve(__dirname, "..", "..", "..", "..")
+    const prettierConfig = await resolveConfig(prettierLocation)
 
-  const prettierConfig = await resolveConfig(prettierLocation)
-
-  const output = format(messyOutput, {
-    ...prettierConfig,
-    parser: "typescript"
-  })
+    output = format(output, {
+      ...prettierConfig,
+      parser: "typescript"
+    })
+  }
 
   return output
 }

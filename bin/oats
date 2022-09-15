@@ -2,11 +2,56 @@
 
 const program = require("commander")
 const { generate } = require("../dist/generate")
+const version = require("../package.json").version
+const fs = require("fs")
+const parts = ["types", "request", "operations"]
+const parseBoolFlag = x => {
+  if (x === 'true'){
+    return true
+  }
+  if (x === 'false'){
+    return false
+  }
+  throw new Error(`Unsupported flag value "${x}", supply "true" or "false"!`)
+}
 
-program.arguments("<openapi spec>").action(async spec => {
-  const output = await generate(spec)
+let openApiSpec = ""
+program
+  .version(version)
+  .description("An opinionated OpenAPI doc to TypeScript HTTP client generator")
+  .option(
+    "-i, --include <parts>",
+    "comma sepated list of code parts to generate",
+    function(val) {
+      program.types = program.request = program.operations = false
+      val.split(",").map(x => x.trim()).forEach(elem => {
+        if (elem) {
+          if (!parts.includes(elem)) {
+            throw new Error(
+              `Unsupported part '${elem}', supported parts are: ${parts}`
+            )
+          }
+          program[elem] = true
+        }
+      })
+    },
+    "types,request,operations"
+  )
+  .option("-p, --prettier [true/false]", "prettier output code", parseBoolFlag, true)
+  .option("--withDoc [true/false]", "document generated types", parseBoolFlag, true)
+  .option("--patchScript <file>", "Script to modify openapi document (example: https://github.com/influxdata/influxdb-client-js/blob/master/packages/apis/scripts/patchSwagger.js)")
+  .option("--storeOperations <file>", "store operations to file")
+  .arguments("<openApiSpec...>")
+  .action(spec => (openApiSpec = spec))
+  .parse(process.argv)
 
-  process.stdout.write(output)
-})
-
-program.parse(process.argv)
+if (openApiSpec) {
+  generate(openApiSpec, {
+    ...program,
+    onParsed: program.storeOperations ? (function (parsed) {
+      fs.writeFileSync(program.storeOperations, JSON.stringify(parsed.pathOps,null,2))
+    }): undefined
+  }).then(output => process.stdout.write(output))
+} else {
+  program.help()
+}

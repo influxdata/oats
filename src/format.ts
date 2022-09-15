@@ -27,9 +27,13 @@ export function isTypeNamed(type: string): boolean {
   return startsAlphaNumeric && !includesUnion && !includesIntersection
 }
 
-export function formatTypeDeclaration(name: string, impl: string): string {
+export function formatTypeDeclaration(name: string, impl: string, description: string = ''): string {
+  let doc = ''
+  if (description){
+    doc = `/**\n * ${description}\n*/\n`  
+  }
   if (!impl.startsWith("{")) {
-    return `export type ${name} = ${impl}`
+    return `${doc}export type ${name} = ${impl}`
   }
 
   let bracesCount = 0
@@ -44,11 +48,11 @@ export function formatTypeDeclaration(name: string, impl: string): string {
     }
 
     if ((c === "|" || c === "&") && bracesCount === 0) {
-      return `export type ${name} = ${impl}`
+      return `${doc}export type ${name} = ${impl}`
     }
   }
 
-  return `export interface ${name} ${impl}`
+  return `${doc}export interface ${name} ${impl}`
 }
 
 export function formatPathOp(pathOp: PathOperation): string {
